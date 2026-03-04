@@ -1,17 +1,20 @@
 /**
  * Main Sidebar Controller
  * Orchestrates UI, providers, rules engine, and chat functionality.
+ * Supports Google OAuth login for Gemini (primary) and API keys for others.
  */
 
 const providerManager = new AIProviderManager();
 const rulesEngine = new RulesEngine();
 
 // State
-let chatHistory = []; // { role: "user"|"assistant", content: string }
+let chatHistory = [];
 let isLoading = false;
+let currentUser = null; // { email, name, picture, token }
 
 // DOM Elements
 const $ = (sel) => document.querySelector(sel);
+const loginScreen = $("#loginScreen");
 const mainPanel = $("#mainPanel");
 const settingsPanel = $("#settingsPanel");
 const rulesPanel = $("#rulesPanel");
@@ -29,8 +32,21 @@ async function init() {
   await providerManager.loadSettings();
   await rulesEngine.loadRules();
 
-  // Restore last selected provider
-  chrome.storage.local.get(["lastProvider", "lastMode"], (data) => {
+  // Check if user is already signed in
+  chrome.storage.local.get(["googleUser", "lastProvider", "lastMode"], (data) => {
+    if (data.googleUser && data.googleUser.token) {
+      // Restore session
+      currentUser = data.googleUser;
+      providerManager.setGoogleAuthToken(currentUser.token);
+      showMainPanel();
+      showAccountInfo();
+
+      // Silently refresh the token
+      refreshGoogleToken();
+    } else {
+      showLoginScreen();
+    }
+
     if (data.lastProvider) {
       providerSelect.value = data.lastProvider;
       providerManager.setActiveProvider(data.lastProvider);
@@ -47,8 +63,141 @@ async function init() {
   bindEvents();
 }
 
+// --- Google Auth ---
+async function handleGoogleLogin() {
+  try {
+    const token = await getGoogleAuthToken(true);
+    if (!token) {
+      showToast("Login cancelled");
+      return;
+    }
+
+    // Fetch user profile
+    const userInfo = await fetchGoogleUserInfo(token);
+
+    currentUser = {
+      email: userInfo.email,
+      name: userInfo.name,
+      picture: userInfo.picture,
+      token: token,
+    };
+
+    // Save session
+    chrome.storage.local.set({ googleUser: currentUser });
+
+    // Set token for Gemini
+    providerManager.setGoogleAuthToken(token);
+    providerManager.setActiveProvider("gemini");
+    providerSelect.value = "gemini";
+    chrome.storage.local.set({ lastProvider: "gemini" });
+
+    showMainPanel();
+    showAccountInfo();
+    updateConnectionStatus();
+    showToast("Signed in as " + userInfo.email);
+  } catch (error) {
+    showToast("Login failed: " + error.message);
+  }
+}
+
+function getGoogleAuthToken(interactive) {
+  return new Promise((resolve, reject) => {
+    chrome.identity.getAuthToken({ interactive }, (token) => {
+      if (chrome.runtime.lastError) {
+        reject(new Error(chrome.runtime.lastError.message));
+      } else {
+        resolve(token);
+      }
+    });
+  });
+}
+
+async function fetchGoogleUserInfo(token) {
+  const response = await fetch("https://www.googleapis.com/oauth2/v2/userinfo", {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!response.ok) throw new Error("Failed to fetch user info");
+  return response.json();
+}
+
+async function refreshGoogleToken() {
+  try {
+    const token = await getGoogleAuthToken(false);
+    if (token) {
+      currentUser.token = token;
+      providerManager.setGoogleAuthToken(token);
+      chrome.storage.local.set({ googleUser: currentUser });
+    }
+  } catch (_) {
+    // Silent fail - token refresh will happen on next interaction
+  }
+}
+
+async function handleSignOut() {
+  if (currentUser && currentUser.token) {
+    // Revoke the token
+    chrome.identity.removeCachedAuthToken({ token: currentUser.token }, () => {});
+  }
+
+  currentUser = null;
+  providerManager.setGoogleAuthToken(null);
+  chrome.storage.local.remove("googleUser");
+  chatHistory = [];
+  chatContainer.innerHTML = "";
+
+  showLoginScreen();
+  showToast("Signed out");
+}
+
+function handleAdvancedLogin() {
+  // Skip Google login, go straight to main panel with settings
+  showMainPanel();
+  showPanel("settings");
+
+  // Hide account bar since not signed in with Google
+  const accountBar = $("#accountBar");
+  if (accountBar) accountBar.style.display = "none";
+}
+
+// --- UI State ---
+function showLoginScreen() {
+  loginScreen.classList.remove("hidden");
+  mainPanel.classList.add("hidden");
+  settingsPanel.classList.remove("active");
+  rulesPanel.classList.remove("active");
+}
+
+function showMainPanel() {
+  loginScreen.classList.add("hidden");
+  mainPanel.classList.remove("hidden");
+}
+
+function showAccountInfo() {
+  const accountBar = $("#accountBar");
+  const avatar = $("#accountAvatar");
+  const email = $("#accountEmail");
+
+  if (currentUser) {
+    accountBar.style.display = "flex";
+    email.textContent = currentUser.email;
+    if (currentUser.picture) {
+      avatar.src = currentUser.picture;
+      avatar.style.display = "block";
+    } else {
+      avatar.style.display = "none";
+    }
+  } else {
+    accountBar.style.display = "none";
+  }
+}
+
 // --- Events ---
 function bindEvents() {
+  // Google Login
+  $("#btnGoogleLogin").addEventListener("click", handleGoogleLogin);
+  $("#btnAdvancedLogin").addEventListener("click", handleAdvancedLogin);
+  $("#btnSignOut").addEventListener("click", handleSignOut);
+
   // Send message
   sendBtn.addEventListener("click", handleSend);
   chatInput.addEventListener("keydown", (e) => {
@@ -99,7 +248,6 @@ function bindEvents() {
 
   // Save rules
   $("#saveRules").addEventListener("click", async () => {
-    // Save global system prompt
     rulesEngine.globalSystemPrompt = $("#globalSystemPrompt").value;
     await rulesEngine.saveRules();
     showToast("Rules saved!");
@@ -136,6 +284,11 @@ async function handleSend() {
   const typingEl = showTypingIndicator();
 
   try {
+    // Refresh token before sending if using Gemini
+    if (providerManager.activeProvider === "gemini" && currentUser) {
+      await refreshGoogleToken();
+    }
+
     // Get page context if enabled
     let pageContext = null;
     if (pageContextToggle.checked) {
@@ -217,33 +370,22 @@ function removeTypingIndicator(el) {
 }
 
 function formatMarkdown(text) {
-  // Simple markdown rendering
   let html = text
-    // Code blocks
     .replace(/```(\w*)\n([\s\S]*?)```/g, (_, lang, code) => {
       const escaped = escapeHtml(code.trim());
       return `<pre><code class="language-${lang}">${escaped}</code></pre>`;
     })
-    // Inline code
     .replace(/`([^`]+)`/g, "<code>$1</code>")
-    // Bold
     .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
-    // Italic
     .replace(/\*(.+?)\*/g, "<em>$1</em>")
-    // Headers
     .replace(/^### (.+)$/gm, "<h4>$1</h4>")
     .replace(/^## (.+)$/gm, "<h3>$1</h3>")
     .replace(/^# (.+)$/gm, "<h2>$1</h2>")
-    // Bullet lists
     .replace(/^[-*] (.+)$/gm, "<li>$1</li>")
-    // Numbered lists
     .replace(/^\d+\. (.+)$/gm, "<li>$1</li>")
-    // Paragraphs
     .replace(/\n\n/g, "</p><p>")
-    // Line breaks
     .replace(/\n/g, "<br>");
 
-  // Wrap consecutive <li> in <ul>
   html = html.replace(
     /(<li>.*?<\/li>)(?:<br>)?/g,
     "$1"
@@ -290,12 +432,12 @@ function showPanel(name) {
 // --- Settings ---
 function populateSettingsUI() {
   const s = providerManager.settings;
+  $("#geminiKey").value = s.gemini?.apiKey || "";
+  $("#geminiModel").value = s.gemini?.model || "gemini-2.0-flash";
   $("#openaiKey").value = s.chatgpt?.apiKey || "";
   $("#openaiModel").value = s.chatgpt?.model || "gpt-4o";
   $("#claudeKey").value = s.claude?.apiKey || "";
   $("#claudeModel").value = s.claude?.model || "claude-sonnet-4-6";
-  $("#geminiKey").value = s.gemini?.apiKey || "";
-  $("#geminiModel").value = s.gemini?.model || "gemini-2.0-flash";
   $("#deepseekKey").value = s.deepseek?.apiKey || "";
   $("#deepseekModel").value = s.deepseek?.model || "deepseek-chat";
   $("#customBaseUrl").value = s.custom?.baseUrl || "";
@@ -305,6 +447,10 @@ function populateSettingsUI() {
 
 async function saveProviderSettings() {
   const settings = {
+    gemini: {
+      apiKey: $("#geminiKey").value.trim(),
+      model: $("#geminiModel").value,
+    },
     chatgpt: {
       apiKey: $("#openaiKey").value.trim(),
       model: $("#openaiModel").value,
@@ -312,10 +458,6 @@ async function saveProviderSettings() {
     claude: {
       apiKey: $("#claudeKey").value.trim(),
       model: $("#claudeModel").value,
-    },
-    gemini: {
-      apiKey: $("#geminiKey").value.trim(),
-      model: $("#geminiModel").value,
     },
     deepseek: {
       apiKey: $("#deepseekKey").value.trim(),
@@ -338,8 +480,11 @@ async function testProvider(btn) {
   btn.textContent = "...";
   btn.className = "test-btn";
 
-  // Temporarily save current input values
   const tempSettings = {
+    gemini: {
+      apiKey: $("#geminiKey").value.trim(),
+      model: $("#geminiModel").value,
+    },
     chatgpt: {
       apiKey: $("#openaiKey").value.trim(),
       model: $("#openaiModel").value,
@@ -347,10 +492,6 @@ async function testProvider(btn) {
     claude: {
       apiKey: $("#claudeKey").value.trim(),
       model: $("#claudeModel").value,
-    },
-    gemini: {
-      apiKey: $("#geminiKey").value.trim(),
-      model: $("#geminiModel").value,
     },
     deepseek: {
       apiKey: $("#deepseekKey").value.trim(),
@@ -380,12 +521,9 @@ async function testProvider(btn) {
 }
 
 function updateConnectionStatus() {
-  const config = providerManager.getProviderConfig();
-  const hasKey =
-    config.apiKey ||
-    (providerManager.activeProvider === "custom" && config.baseUrl);
-  statusDot.className = hasKey ? "status-dot connected" : "status-dot";
-  statusDot.title = hasKey ? "API key configured" : "No API key set";
+  const isReady = providerManager.isProviderReady();
+  statusDot.className = isReady ? "status-dot connected" : "status-dot";
+  statusDot.title = isReady ? "Connected" : "Not connected - check settings";
 }
 
 // --- Rules ---
@@ -427,13 +565,11 @@ function createRuleCard(rule, isCustom) {
     <div class="rule-description">${escapeHtml(rule.description)}</div>
   `;
 
-  // Toggle handler
   const checkbox = card.querySelector('input[type="checkbox"]');
   checkbox.addEventListener("change", () => {
     rule.enabled = checkbox.checked;
   });
 
-  // Delete handler
   if (isCustom) {
     const delBtn = card.querySelector(`[data-delete="${rule.id}"]`);
     delBtn.addEventListener("click", () => {

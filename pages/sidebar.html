@@ -7,8 +7,30 @@
   <link rel="stylesheet" href="../css/sidebar.css" />
 </head>
 <body>
+
+  <!-- Login Screen (shown when not signed in) -->
+  <div class="login-screen" id="loginScreen">
+    <div class="login-content">
+      <div class="login-icon">&#10024;</div>
+      <h1>AI Sidebar Assistant</h1>
+      <p>Chat with AI directly from your browser sidebar. Powered by Google Gemini.</p>
+      <button class="google-login-btn" id="btnGoogleLogin">
+        <svg class="google-icon" viewBox="0 0 24 24" width="18" height="18">
+          <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"/>
+          <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+          <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+          <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+        </svg>
+        Sign in with Google
+      </button>
+      <p class="login-hint">Free to use with your Google account</p>
+
+      <button class="advanced-login-link" id="btnAdvancedLogin">Use API Key instead (Advanced)</button>
+    </div>
+  </div>
+
   <!-- Main Chat Panel -->
-  <div class="main-panel" id="mainPanel">
+  <div class="main-panel hidden" id="mainPanel">
     <div class="app-layout">
       <div class="header">
         <div class="header-left">
@@ -22,11 +44,20 @@
         </div>
       </div>
 
+      <!-- Account Bar -->
+      <div class="account-bar" id="accountBar">
+        <div class="account-info">
+          <img class="account-avatar" id="accountAvatar" src="" alt="" />
+          <span class="account-email" id="accountEmail"></span>
+        </div>
+        <button class="signout-btn" id="btnSignOut" title="Sign out">Sign Out</button>
+      </div>
+
       <div class="provider-bar">
         <select class="provider-select" id="providerSelect">
+          <option value="gemini">Gemini (Google)</option>
           <option value="chatgpt">ChatGPT (OpenAI)</option>
           <option value="claude">Claude (Anthropic)</option>
-          <option value="gemini">Gemini (Google)</option>
           <option value="deepseek">DeepSeek</option>
           <option value="custom">Custom (OpenAI-compatible)</option>
         </select>
@@ -53,7 +84,7 @@
         <div class="welcome-screen" id="welcomeScreen">
           <div class="welcome-icon">&#10024;</div>
           <h2>AI Sidebar Assistant</h2>
-          <p>Connect your AI model and start chatting. The extension enhances your prompts with agent rules for better results.</p>
+          <p>You're connected! Start chatting with AI powered by your Google account.</p>
           <div class="quick-actions">
             <button class="quick-action" data-prompt="Summarize the current page">&#128196; Summarize this page</button>
             <button class="quick-action" data-prompt="Explain the selected text in simple terms">&#128161; Explain selection</button>
@@ -84,6 +115,27 @@
       <h3>Settings</h3>
     </div>
     <div class="settings-body">
+      <!-- Gemini model selection (no API key needed when signed in) -->
+      <div class="settings-section">
+        <h4>Google (Gemini) - Connected via Google Account</h4>
+        <div class="setting-item">
+          <label>Model</label>
+          <select id="geminiModel">
+            <option value="gemini-2.0-flash">Gemini 2.0 Flash</option>
+            <option value="gemini-2.0-pro">Gemini 2.0 Pro</option>
+            <option value="gemini-1.5-pro">Gemini 1.5 Pro</option>
+          </select>
+        </div>
+        <div class="setting-item">
+          <label>API Key (optional - only needed if not signed in)</label>
+          <input type="password" id="geminiKey" placeholder="Leave empty if signed in with Google" />
+        </div>
+      </div>
+
+      <div class="settings-divider">
+        <span>Other Providers (API Key Required)</span>
+      </div>
+
       <div class="settings-section">
         <h4>OpenAI (ChatGPT)</h4>
         <div class="setting-item">
@@ -119,25 +171,6 @@
             <option value="claude-sonnet-4-6">Claude Sonnet 4.6</option>
             <option value="claude-haiku-4-5-20251001">Claude Haiku 4.5</option>
             <option value="claude-opus-4-6">Claude Opus 4.6</option>
-          </select>
-        </div>
-      </div>
-
-      <div class="settings-section">
-        <h4>Google (Gemini)</h4>
-        <div class="setting-item">
-          <label>API Key</label>
-          <div class="api-key-group">
-            <input type="password" id="geminiKey" placeholder="AI..." />
-            <button class="test-btn" data-provider="gemini">Test</button>
-          </div>
-        </div>
-        <div class="setting-item">
-          <label>Model</label>
-          <select id="geminiModel">
-            <option value="gemini-2.0-flash">Gemini 2.0 Flash</option>
-            <option value="gemini-2.0-pro">Gemini 2.0 Pro</option>
-            <option value="gemini-1.5-pro">Gemini 1.5 Pro</option>
           </select>
         </div>
       </div>

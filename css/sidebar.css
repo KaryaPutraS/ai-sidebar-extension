@@ -35,7 +35,156 @@ body {
   overflow: hidden;
 }
 
-/* Header */
+/* ===== Login Screen ===== */
+.login-screen {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  background: var(--bg-primary);
+}
+
+.login-screen.hidden {
+  display: none;
+}
+
+.login-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 30px 24px;
+  gap: 12px;
+  max-width: 300px;
+}
+
+.login-icon {
+  width: 64px;
+  height: 64px;
+  background: var(--accent);
+  border-radius: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 32px;
+  box-shadow: 0 4px 24px var(--accent-glow);
+  margin-bottom: 4px;
+}
+
+.login-content h1 {
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.login-content > p {
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.google-login-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  padding: 12px 20px;
+  background: #fff;
+  color: #333;
+  border: none;
+  border-radius: var(--radius);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-top: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.google-login-btn:hover {
+  background: #f5f5f5;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  transform: translateY(-1px);
+}
+
+.google-login-btn:active {
+  transform: translateY(0);
+}
+
+.google-icon {
+  flex-shrink: 0;
+}
+
+.login-hint {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.advanced-login-link {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 11px;
+  cursor: pointer;
+  text-decoration: underline;
+  margin-top: 8px;
+  transition: color 0.15s;
+}
+
+.advanced-login-link:hover {
+  color: var(--text-secondary);
+}
+
+/* ===== Account Bar ===== */
+.account-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 14px;
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.account-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.account-avatar {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.account-email {
+  font-size: 11px;
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.signout-btn {
+  background: none;
+  border: 1px solid var(--border-color);
+  color: var(--text-muted);
+  font-size: 10px;
+  padding: 3px 8px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all 0.15s;
+  flex-shrink: 0;
+}
+
+.signout-btn:hover {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+/* ===== Header ===== */
 .header {
   display: flex;
   align-items: center;
@@ -94,7 +243,7 @@ body {
   color: var(--text-primary);
 }
 
-/* Provider Selector */
+/* ===== Provider Selector ===== */
 .provider-bar {
   display: flex;
   align-items: center;
@@ -137,7 +286,7 @@ body {
   background: var(--danger);
 }
 
-/* Agent Mode Bar */
+/* ===== Agent Mode Bar ===== */
 .agent-bar {
   display: flex;
   align-items: center;
@@ -177,7 +326,7 @@ body {
   accent-color: var(--accent);
 }
 
-/* Chat Area */
+/* ===== Chat Area ===== */
 .chat-container {
   flex: 1;
   overflow-y: auto;
@@ -202,7 +351,7 @@ body {
   border-radius: 2px;
 }
 
-/* Messages */
+/* ===== Messages ===== */
 .message {
   display: flex;
   gap: 8px;
@@ -282,7 +431,7 @@ body {
   margin-bottom: 0;
 }
 
-/* Typing indicator */
+/* ===== Typing indicator ===== */
 .typing-indicator {
   display: flex;
   gap: 4px;
@@ -305,7 +454,7 @@ body {
   30% { transform: translateY(-6px); }
 }
 
-/* Input Area */
+/* ===== Input Area ===== */
 .input-area {
   padding: 10px 14px;
   border-top: 1px solid var(--border-color);
@@ -371,7 +520,7 @@ body {
   cursor: not-allowed;
 }
 
-/* Welcome Screen */
+/* ===== Welcome Screen ===== */
 .welcome-screen {
   display: flex;
   flex-direction: column;
@@ -432,7 +581,7 @@ body {
   border-color: var(--accent);
 }
 
-/* Settings Panel */
+/* ===== Settings Panel ===== */
 .settings-panel {
   display: none;
   flex-direction: column;
@@ -475,6 +624,25 @@ body {
   letter-spacing: 0.5px;
   color: var(--text-secondary);
   margin-bottom: 10px;
+}
+
+.settings-divider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 20px 0;
+  color: var(--text-muted);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.settings-divider::before,
+.settings-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--border-color);
 }
 
 .setting-item {
@@ -567,7 +735,7 @@ body {
   background: var(--accent-hover);
 }
 
-/* Rules Panel */
+/* ===== Rules Panel ===== */
 .rules-panel {
   display: none;
   flex-direction: column;
@@ -663,7 +831,7 @@ body {
   color: var(--accent);
 }
 
-/* Hide main when settings/rules shown */
+/* ===== Hide main when settings/rules shown ===== */
 .main-panel {
   display: flex;
   flex-direction: column;
@@ -674,7 +842,7 @@ body {
   display: none;
 }
 
-/* Notification toast */
+/* ===== Toast ===== */
 .toast {
   position: fixed;
   bottom: 70px;
