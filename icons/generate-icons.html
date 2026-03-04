@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html><body>
+<canvas id="c16" width="16" height="16"></canvas>
+<canvas id="c48" width="48" height="48"></canvas>
+<canvas id="c128" width="128" height="128"></canvas>
+<script>
+function drawIcon(canvas) {
+  const ctx = canvas.getContext('2d');
+  const s = canvas.width;
+  // Background
+  ctx.fillStyle = '#6c5ce7';
+  ctx.beginPath();
+  ctx.roundRect(0, 0, s, s, s * 0.2);
+  ctx.fill();
+  // Text
+  ctx.fillStyle = '#ffffff';
+  ctx.font = `bold ${s * 0.4}px sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('AI', s/2, s/2 + s*0.02);
+}
+['c16','c48','c128'].forEach(id => drawIcon(document.getElementById(id)));
+</script>
+</body></html>
